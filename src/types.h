@@ -2,14 +2,15 @@
 #define types_h_INCLUDED
 
 typedef struct {
-	int freq = 440;
-	int amp = 0.5;
-	int phase = 0;
-	int sexs = 2;
-	int sample_rate = 44100;
-	char * wave_form = "sine";
-	char * channels = "stereo";
-	char * pcm_device = "default";
+	double freq;
+	double cutt_freq;
+	double amp;
+	double phase;
+	double sexs;
+	int sample_rate;
+	char * wave_form;
+	char * channels;
+	char * pcm_device;
 } GEN_INP;
 
 #endif // types_h_INCLUDED

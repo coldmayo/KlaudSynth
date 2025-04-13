@@ -1,0 +1,4 @@
+- [ ] Make Generator for sine wave
+- [ ] Make filters (Bandpass, lowpass, highpass)
+- [ ] Make amplifier
+- [ ] Make an ugly GUI
