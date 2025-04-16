@@ -1,4 +1,8 @@
-- [ ] Make Generator for sine wave
-- [ ] Make filters (Bandpass, lowpass, highpass)
-- [ ] Make amplifier
+- [x] Make Generator for sine wave
+- [x] Make filters (Bandpass, lowpass, highpass)
+- [x] Make amplifier
+- [x] Make a way to save waveforms
+- [x] Make a way to add/subtract waveforms
 - [ ] Make an ugly GUI
+	- Need to be able to see created waveforms
+	- Display frequencies
