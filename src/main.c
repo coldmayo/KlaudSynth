@@ -30,10 +30,12 @@ int main(int argc, char ** argv) {
 	bool playing = false;
 	GEN_INP waves[20] = {0};
 	GEN_INP wave = {0};
+	bool wave_q = false;
 	int wave_count = 0;
+	char id[69] = "KldSynth";
 	while(1) {
 		char * inp = malloc(MAXCOMMSIZE);
-		printf("KldSynth> ");
+		printf("%s> ", id);
 		fgets(inp, MAXCOMMSIZE, stdin);
 		inp[strcspn(inp, "\n")] = '\0';
 		if (strcmp(slice_str(inp, buff, 0, 5), ":msine") == 0) {
@@ -49,6 +51,7 @@ int main(int argc, char ** argv) {
     		strcpy(wave.channels, "mono");
     		strcpy(wave.pcm_device, "default");
     		printf("Sine wave configured\n");
+    		wave_q = true;
     		//printf("wave.freq after :msine = %f\n", wave.freq);
 
 		} else if (strcmp(slice_str(inp, buff, 0, 3), ":msq") == 0) {
@@ -64,6 +67,7 @@ int main(int argc, char ** argv) {
     		strcpy(wave.channels, "mono");
     		strcpy(wave.pcm_device, "default");
     		printf("Square wave configured\n");
+    		wave_q = true;
     		
 		} else if (strcmp(slice_str(inp, buff, 0, 3), ":lpf") == 0) {
 			strcpy(wave.filter, "lpf");
@@ -98,8 +102,28 @@ int main(int argc, char ** argv) {
 		} else if (strcmp(inp, ":q") == 0) {
     		free(inp);
 			return 0;
+		} else if (strcmp(inp, ":l") == 0) {
+			for (int i = 0; i < wave_count; i++) {
+				printf("%s\n", waves[i].name);
+			}
+		} else if (strcmp(slice_str(inp, buff, 0, 4), ":edit") == 0) {
+			char * search = slice_str(inp, buff, 6, strlen(inp)-1);
+			bool didthing = false;
+			for (int i = 0; i < wave_count; i++) {
+				if (strcmp(waves[i].name, search) == 0) {
+					wave = waves[i];
+					didthing = true;
+					break;
+				}
+			}
+			if (!didthing) {
+				printf("Could not find that wave, use the ls command to see all the created waves\n");
+			}
 		} else {
 			printf("Huh?\n");
+		}
+		if (wave_q) {
+			strcpy(id, wave.name);
 		}
 	}
 }

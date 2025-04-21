@@ -30,8 +30,7 @@ float band_pass(float input, float *prev_in1, float *prev_in2, float *prev_out1,
     float a1 = -2 * cosf(w0);
     float a2 = 1 - alpha;
 
-    float output = (b0/a0)*input + (b1/a0)*(*prev_in1) + (b2/a0)*(*prev_in2)
-                 - (a1/a0)*(*prev_out1) - (a2/a0)*(*prev_out2);
+    float output = (b0/a0)*input + (b1/a0)*(*prev_in1) + (b2/a0)*(*prev_in2) - (a1/a0)*(*prev_out1) - (a2/a0)*(*prev_out2);
 
     // Update state variables
     *prev_in2 = *prev_in1;
@@ -54,8 +53,7 @@ float notch_filter(float input, float *prev_in1, float *prev_in2, float *prev_ou
     float a1 = -2 * cosf(w0);
     float a2 = 1 - alpha;
 
-    float output = (b0/a0)*input + (b1/a0)*(*prev_in1) + (b2/a0)*(*prev_in2)
-                 - (a1/a0)*(*prev_out1) - (a2/a0)*(*prev_out2);
+    float output = (b0/a0)*input + (b1/a0)*(*prev_in1) + (b2/a0)*(*prev_in2) - (a1/a0)*(*prev_out1) - (a2/a0)*(*prev_out2);
 
     // Update state variables
     *prev_in2 = *prev_in1;
