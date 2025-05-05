@@ -12,7 +12,7 @@ float low_pass(float input, float*prev_out, float alpha, float*prev_inp) {
 
 // High Pass Filter
 float high_pass(float input, float*prev_out, float alpha, float*prev_inp) {
-	float output = alpha*(*prev_out) + alpha*(input - (*prev_inp));
+	float output = alpha * (*prev_out + input - *prev_inp);
 	*prev_out = output;
 	*prev_inp = input;
 	return output;

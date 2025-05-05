@@ -3,6 +3,7 @@
 - [x] Make amplifier
 - [x] Make a way to save waveforms
 - [x] Make a way to add/subtract waveforms
+- [ ] Add a way to save the sounds to a lossless format
 - [ ] Make an ugly GUI
 	- Need to be able to see created waveforms
 	- Display frequencies
