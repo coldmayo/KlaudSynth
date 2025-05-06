@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "gen.h"
+#include "plots.h"
 
 #define MAXCOMMSIZE 256
 #define MAX_WAVES 20
@@ -223,6 +224,8 @@ int main(int argc, char ** argv) {
 			if (!didthing) {
 				printf("Could not find that wave, use the ls command to see all the created waves\n");
 			}
+		} else if (strcmp(slice_str(inp, buff, 0, 3), "veiw") == 0) {
+			startUp(argc, argv);
 		} else {
 			printf("Huh?\n");
 		}
