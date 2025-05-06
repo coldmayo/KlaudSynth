@@ -35,6 +35,7 @@ char * slice_str(const char * str, char * buffer, int start, int end) {
 // type:
     // 0: sine
     // 1: square
+    // 2: sawtooth
 void basic_wav(GEN_INP * wave, int type) {
 	if (!wave) return;
 	
@@ -60,6 +61,9 @@ void basic_wav(GEN_INP * wave, int type) {
     	case 1:
         	strcpy(wave->wave_form, "square");
         	break;
+        case 2:
+            strcpy(wave->wave_form, "saw");
+            break;
         default:
             strcpy(wave->wave_form, "sine");
 	}
@@ -68,6 +72,33 @@ void basic_wav(GEN_INP * wave, int type) {
     strcpy(wave->channels, "stereo");
     strcpy(wave->pcm_device, "default");
     printf("%s wave configured\n", wave->wave_form);
+}
+
+void show_info(GEN_INP * wave) {
+	printf("\n---General---\n\n");
+	printf("Name: %s\n", wave->name);
+	printf("Wave type (left): %s\n", wave->wave_form);
+	printf("Wave type (right): %s\n", wave->wave_form_r);
+	printf("Channel Setting: %s\n", wave->channels);
+	printf("Seconds played: %f\n", wave->sexs);
+	printf("\n---Wave Stats---\n\n");
+	printf("Frequency: %f Hz\n", wave->freq);
+	printf("Amplitude: %f\n", wave->amp);
+	printf("Phase: %f\n", wave->phase);
+	printf("Sample Rate: %d Hz\n", wave->sample_rate);
+	printf("\n---Filter and Effects Stuff---\n\n");
+	printf("Filter type: %s\n", wave->filter);
+
+	if (strcmp("None", wave->filter) != 0) {
+		printf("Cuttoff Frequency: %f Hz\n", wave->cutt_freq);
+	}
+	
+	printf("Panning: %f\n", wave->pan);
+	printf("Phase offset: %f\n", wave->phase_offset);
+	printf("Delay: %f\n", wave->delay);
+	printf("Feedback: %f\n", wave->feedback);
+	printf("Chorus Rate: %f\n", wave->chorus_rate);
+	printf("Chorus Depth: %f\n", wave->chorus_depth);
 }
 
 // notation: ./synth <frequency> <amplitude> <phase> <seconds> <sample rate> <wave form> <channels> <device>
@@ -94,7 +125,21 @@ int main(int argc, char ** argv) {
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "msq") == 0) {
     		basic_wav(&wave, 1);
     		wave_q = true;
-    		
+		} else if (strcmp(inp, "msaw") == 0) {
+			basic_wav(&wave, 2);
+			wave_q = true;
+		} else if (strcmp(slice_str(inp, buff, 0, 3), "info") == 0) {
+			if (strlen(inp) > 4) {
+				char * search = slice_str(inp, buff, 5, strlen(inp)-1);
+				for (int i = 0; i < wave_count; i++) {
+					if (strcmp(waves[i].name, search) == 0) {
+						show_info(&waves[i]);
+						break;
+					}
+				}
+			} else {
+				show_info(&wave);
+			}
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "lpf") == 0) {
 			strcpy(wave.filter, "lpf");
 			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
@@ -103,6 +148,18 @@ int main(int argc, char ** argv) {
 			strcpy(wave.filter, "hpf");
 			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
 			wave.cutt_freq = atoi(cutt_freq);
+		} else if (strcmp(slice_str(inp, buff, 0, 2), "pan") == 0) {
+			char * p = slice_str(inp, buff, 4, strlen(inp) - 1);
+			float pa = atof(p);
+			if (pa <= 1 && pa >= -1) {
+    			printf("Set pan to: %f\n", pa);
+				wave.pan = pa;
+			}
+		} else if (strcmp(slice_str(inp, buff, 0, 2), "amp") == 0) {
+			char * a = slice_str(inp, buff, 4, strlen(inp)-1);
+			float am = atof(a);
+			wave.amp = am;
+			printf("Set amplitude to: %f\n", am);
 		} else if (strcmp(slice_str(inp, buff, 0, 0), "p") == 0) {
     		if (!playing) {
 				playing = true;
