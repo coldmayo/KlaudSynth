@@ -46,6 +46,18 @@ float saw_series(float phase, int iters) {
 
 // reverse sawtooth
 
+// triangle wave
+float triangle(float phase) {
+	phase = fmodf(phase, 1.0f);
+
+	if (phase < 0.25f) {
+		return 4.0f * phase;
+	} else if (phase < 0.75f) {
+		return 2.0f - 4.0f*phase;
+	} else {
+		return -4.0f + 4.0f * phase;
+	}
+}
 
 void * generate(void * arg) {
     SYNTH_WAVES * input = (SYNTH_WAVES*)arg;
@@ -125,6 +137,8 @@ void * generate(void * arg) {
 					l_sample = square(phases[w]);
 				} else if (strcmp(input->waves[w].wave_form, "saw") == 0) {
 					l_sample = saw_mod(phases[w]);
+				} else if (strcmp(input->waves[w].wave_form, "tri") == 0) {
+					l_sample = saw_mod(phases[w]);
 				}
 
 				r_sample = 0.0f;
@@ -138,6 +152,8 @@ void * generate(void * arg) {
                         r_sample = square(right_phase);
                     } else if (strcmp(input->waves[w].wave_form_r, "saw") == 0) {
                         r_sample = saw_mod(right_phase);
+                    } else if (strcmp(input->waves[w].wave_form_r, "tri") == 0) {
+                        r_sample = triangle(right_phase);
                     }
 				}
 				if (input->waves[w].cutt_freq != -1) {
