@@ -41,6 +41,5 @@ float process_chorus(float input, CHORUS_STATE* state, float rate, float depth, 
     float delayed_phase = state->phase - (0.0005f + 0.0005f * lfo * depth) * sample_rate;
     if (delayed_phase < 0.0f) delayed_phase += 1.0f;
 
-    // implement delay line later
     return sinf(2.0f * M_PI * delayed_phase) * input;
 }

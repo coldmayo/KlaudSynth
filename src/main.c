@@ -4,9 +4,11 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "types.h"
 #include "gen.h"
+//#include "plots.h"
 
 #define MAXCOMMSIZE 256
 #define MAX_WAVES 20
@@ -30,6 +32,10 @@ char * slice_str(const char * str, char * buffer, int start, int end) {
     }
     buffer[j] = 0;
     return buffer;
+}
+
+void * show_veiwer(void * args) {
+	system("./SynthVeiw");
 }
 
 // type:
@@ -64,6 +70,9 @@ void basic_wav(GEN_INP * wave, int type) {
         case 2:
             strcpy(wave->wave_form, "saw");
             break;
+        case 3:
+            strcpy(wave->wave_form, "tri");
+            break;
         default:
             strcpy(wave->wave_form, "sine");
 	}
@@ -71,6 +80,7 @@ void basic_wav(GEN_INP * wave, int type) {
 	strcpy(wave->wave_form_r, "sine");
     strcpy(wave->channels, "stereo");
     strcpy(wave->pcm_device, "default");
+    wave->saved = false;
     printf("%s wave configured\n", wave->wave_form);
 }
 
@@ -127,6 +137,9 @@ int main(int argc, char ** argv) {
     		wave_q = true;
 		} else if (strcmp(inp, "msaw") == 0) {
 			basic_wav(&wave, 2);
+			wave_q = true;
+		} else if (strcmp(slice_str(inp, buff, 0, 3), "mtri") == 0) {
+			basic_wav(&wave, 3);
 			wave_q = true;
 		} else if (strcmp(slice_str(inp, buff, 0, 3), "info") == 0) {
 			if (strlen(inp) > 4) {
@@ -198,10 +211,24 @@ int main(int argc, char ** argv) {
             }
 		} else if (inp[0] == 'w') {
 			char * n = slice_str(inp, buff, 2, strlen(inp)-1);
-			if (wave_count < MAX_WAVES) {
-    			strcpy(wave.name, n);
+			
+			//if (wave_count < MAX_WAVES) {
+    			//strcpy(wave.name, n);
+				//waves[wave_count] = wave;
+				//wave_count++;
+				//save_to_file();
+			//}
+			if (wave.saved == false && MAX_WAVES > wave_count) {
+    			wave.saved = true;
+				strcpy(wave.name, n);
 				waves[wave_count] = wave;
 				wave_count++;
+			} else {
+				for (int i = 0; wave_count > i; i++) {
+					if (strcmp(waves[i].name, wave.name) == 0) {
+						waves[i] = wave;   // overwriteing the old one I guess
+					}
+				}
 			}
 		} else if (strcmp(inp, "q") == 0) {
     		free(inp);
@@ -223,6 +250,9 @@ int main(int argc, char ** argv) {
 			if (!didthing) {
 				printf("Could not find that wave, use the ls command to see all the created waves\n");
 			}
+		} else if (strcmp(slice_str(inp, buff, 0, 3), "veiw") == 0) {
+			//startUp(argc, argv);
+			pthread_create(&play, NULL, show_veiwer, NULL);
 		} else {
 			printf("Huh?\n");
 		}

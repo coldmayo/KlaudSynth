@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
-//#include "main.h"
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "types.h"
 #include "filter.h"
 #include "amp.h"
@@ -46,6 +48,18 @@ float saw_series(float phase, int iters) {
 
 // reverse sawtooth
 
+// triangle wave
+float triangle(float phase) {
+	phase = fmodf(phase, 1.0f);
+
+	if (phase < 0.25f) {
+		return 4.0f * phase;
+	} else if (phase < 0.75f) {
+		return 2.0f - 4.0f*phase;
+	} else {
+		return -4.0f + 4.0f * phase;
+	}
+}
 
 void * generate(void * arg) {
     SYNTH_WAVES * input = (SYNTH_WAVES*)arg;
@@ -54,6 +68,12 @@ void * generate(void * arg) {
 	int pcm, tmp, buff_size;
 	int chans;
 	unsigned int sample_rate = input->waves[0].sample_rate;
+
+	FILE *data_file = fopen("audio_samples.txt", "w");
+    if (!data_file) {
+        perror("Failed to open data file");
+        return NULL;
+    }
 
 	// opened pcm device
     if ((pcm = snd_pcm_open(&pcm_handle, input->waves[0].pcm_device, SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
@@ -125,6 +145,8 @@ void * generate(void * arg) {
 					l_sample = square(phases[w]);
 				} else if (strcmp(input->waves[w].wave_form, "saw") == 0) {
 					l_sample = saw_mod(phases[w]);
+				} else if (strcmp(input->waves[w].wave_form, "tri") == 0) {
+					l_sample = triangle(phases[w]);
 				}
 
 				r_sample = 0.0f;
@@ -138,6 +160,8 @@ void * generate(void * arg) {
                         r_sample = square(right_phase);
                     } else if (strcmp(input->waves[w].wave_form_r, "saw") == 0) {
                         r_sample = saw_mod(right_phase);
+                    } else if (strcmp(input->waves[w].wave_form_r, "tri") == 0) {
+                        r_sample = triangle(right_phase);
                     }
 				}
 				if (input->waves[w].cutt_freq != -1) {
@@ -156,20 +180,20 @@ void * generate(void * arg) {
 
 				l_sample = amplify(l_sample, input->waves[w].amp);
 				r_sample = amplify(r_sample, input->waves[w].amp);
-
+				
 				// chorus effects
+				
 				if (input->waves[w].chorus_rate > 0.0f) {
                     l_sample = process_chorus(l_sample, chorus_states[w],input->waves[w].chorus_rate, input->waves[w].chorus_depth, sample_rate);
                     if (strcmp(input->waves[w].channels, "stereo") == 0) {
                         r_sample = process_chorus(r_sample, chorus_states[w], input->waves[w].chorus_rate, input->waves[w].chorus_depth, sample_rate);
                     }
                 }
-
-
                 // panning gains
-                float angle = input->waves[w].pan * M_PI_4;
-                float left_gain = cosf(angle) * 0.707f;
-                float right_gain = sinf(angle) * 0.707f;
+                //printf("Pre pan: L=%.6f R=%.6f");
+                float pan = input->waves[w].pan;  // -1 (left) to 1 (right)
+				float left_gain = sqrt(0.5 * (1 - pan));
+				float right_gain = sqrt(0.5 * (1 + pan));
 
 				if (strcmp(input->waves[w].channels, "left") == 0) {
                     right_gain = 0.0f;
@@ -178,7 +202,7 @@ void * generate(void * arg) {
                 } else if (strcmp(input->waves[w].channels, "mono") == 0) {
                     r_sample = l_sample;
                 }
-
+                //printf("Pre pan: L=%.6f R=%.6f", left_gain, right_gain);
 				if (strcmp(input->type, "add") == 0) {
 					l_mix += l_sample * left_gain;
 					r_mix += r_sample * right_gain;
@@ -186,9 +210,10 @@ void * generate(void * arg) {
 					l_mix -= l_sample * left_gain;
 					r_mix -= r_sample * right_gain;
 				}
-
+				//printf("Pre pan: L=%.6f R=%.6f", l_mix, r_mix);
 				phases[w] += input->waves[w].freq * phase_incs[w];
 				if (phases[w] >= 1.0f) phases[w] -= 1.0f;
+				
         	}
 
 			if (input->waves[0].delay > 0.0f) {
@@ -207,12 +232,16 @@ void * generate(void * arg) {
             l_mix = tanhf(l_mix);
             r_mix = tanhf(r_mix);
 
+
             // Fill interleaved buffer
-            if (chans == 2) {
+            //printf("Sample values: L=%.4f R=%.4f\n", l_mix, r_mix);
+            if (strcmp(input->waves[0].channels, "stereo") == 0) {
                 buffer[i*2] = l_mix;
                 buffer[i*2 + 1] = r_mix;
+                fprintf(data_file, "%.6f %.6f\n", l_mix, r_mix);
             } else {
                 buffer[i] = (l_mix + r_mix) * 0.5f;
+                fprintf(data_file, "%.6f %.6f\n", 0.0f, buffer[i]);
             }
 
 			
@@ -253,5 +282,7 @@ void * generate(void * arg) {
     playing = false;
     stop_req = false;
 
+    fclose(data_file);
+	system("source .venv/bin/activate ; python plotting.py");
     return NULL;
 }

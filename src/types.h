@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #ifndef types_h_INCLUDED
 #define types_h_INCLUDED
 
@@ -22,6 +24,7 @@ typedef struct {
 	char wave_form_r[LEN];
 	char channels[LEN];
 	char pcm_device[LEN];
+	bool saved;
 } GEN_INP;
 
 typedef struct {
