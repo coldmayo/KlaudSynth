@@ -63,22 +63,26 @@ void basic_wav(GEN_INP * wave, int type) {
 	switch (type) {
 		case 0:
     		strcpy(wave->wave_form, "sine");
+    		strcpy(wave->wave_form_r, "sine");
     		break;
     	case 1:
         	strcpy(wave->wave_form, "square");
+        	strcpy(wave->wave_form_r, "square");
         	break;
         case 2:
             strcpy(wave->wave_form, "saw");
+            strcpy(wave->wave_form_r, "saw");
             break;
         case 3:
             strcpy(wave->wave_form, "tri");
+            strcpy(wave->wave_form_r, "tri");
             break;
         default:
             strcpy(wave->wave_form, "sine");
+            strcpy(wave->wave_form_r, "sine");
 	}
     
-	strcpy(wave->wave_form_r, "sine");
-    strcpy(wave->channels, "stereo");
+	strcpy(wave->channels, "stereo");
     strcpy(wave->pcm_device, "default");
     wave->saved = false;
     printf("%s wave configured\n", wave->wave_form);
