@@ -4,11 +4,11 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "types.h"
 #include "gen.h"
-#include "plots.h"
-#include "save_waves.h"
+//#include "plots.h"
 
 #define MAXCOMMSIZE 256
 #define MAX_WAVES 20
@@ -32,6 +32,10 @@ char * slice_str(const char * str, char * buffer, int start, int end) {
     }
     buffer[j] = 0;
     return buffer;
+}
+
+void * show_veiwer(void * args) {
+	system("./SynthVeiw");
 }
 
 // type:
@@ -226,7 +230,6 @@ int main(int argc, char ** argv) {
 					}
 				}
 			}
-			save_to_file(waves);
 		} else if (strcmp(inp, "q") == 0) {
     		free(inp);
 			return 0;
@@ -248,7 +251,8 @@ int main(int argc, char ** argv) {
 				printf("Could not find that wave, use the ls command to see all the created waves\n");
 			}
 		} else if (strcmp(slice_str(inp, buff, 0, 3), "veiw") == 0) {
-			startUp(argc, argv);
+			//startUp(argc, argv);
+			pthread_create(&play, NULL, show_veiwer, NULL);
 		} else {
 			printf("Huh?\n");
 		}
