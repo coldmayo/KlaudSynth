@@ -12,21 +12,37 @@ gpointer gtk_thread_func(gpointer user_data) {
     GtkThreadData *data = (GtkThreadData *)user_data;
     GtkWidget *window;
     GtkWidget *image;
-
+	GtkWidget * freq_image;
     gtk_init(&data->argc, &data->argv);
 
+	// Create main window
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Waveform Viewer");
     gtk_window_set_default_size(GTK_WINDOW(window), 400, 300);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
+	// Create tab container
+	GtkWidget * notebook = gtk_notebook_new();
+	gtk_container_add(GTK_CONTAINER(window), notebook);
+
+	// Tab 1: Waveform Veiwer:
+	GtkWidget *tab1_label = gtk_label_new("Waveform Veiwer");
     image = gtk_image_new_from_file("plot.png");
     if (image == NULL) {
         g_warning("Failed to load image plot.png");
         image = gtk_label_new("Image not found");
     }
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), image, tab1_label);
 
-    gtk_container_add(GTK_CONTAINER(window), image);
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    // Tab 2: Frequency Veiwer
+    GtkWidget *tab2_label = gtk_label_new("Frequency Veiwer");
+    freq_image = gtk_image_new_from_file("freq_plot.png");
+    if (image == NULL) {
+        g_warning("Failed to load image freq_plot.png");
+        image = gtk_label_new("Image not found");
+    }
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), freq_image, tab2_label);
+    
     gtk_widget_show_all(window);
 
     gtk_main();

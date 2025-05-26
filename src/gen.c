@@ -111,22 +111,31 @@ void * generate(void * arg) {
         return NULL;
     }
 
-	float prev_out[input->count];
-	float prev_inp[input->count];
 	float phases[input->count];
 	float phase_incs[input->count];
-	float alphas[input->count];
+	float alphas[32][input->count];
 	DELAY_STATE* delay_states[input->count];
 	CHORUS_STATE* chorus_states[input->count];
+    FILTER_STATE wave_filters[input->count][LEN];
+    FILTER_STATE synth_filters[LEN];
 
 	for (int i = 0; i < input->count; i++) {
         phases[i] = input->waves[i].phase;
         phase_incs[i] = 1.0f / (float)sample_rate;
-        prev_out[i] = 0;
-        prev_inp[i] = 0;
-        alphas[i] = (2.0f * M_PI * input->waves[i].cutt_freq) / sample_rate;
+        for (int j = 0; j < input->waves[i].filter_num; j++) {
+            wave_filters[i][j].alpha = (2.0f * M_PI * input->waves[i].filters[j].cutt_freq) / sample_rate;
+            wave_filters[i][j].prev_out = 0;
+            wave_filters[i][j].prev_in = 0;
+        }
+
 		delay_states[i] = init_delay(1.0f, sample_rate); // Max 1 second delay
         chorus_states[i] = init_chorus();
+    }
+
+    for (int j = 0; j < input->filter_num; j++) {
+        synth_filters[j].alpha = (2.0f * M_PI * input->filters[j].cutt_freq) / sample_rate;
+        synth_filters[j].prev_out = 0;
+        synth_filters[j].prev_in = 0;
     }
 
 	unsigned long frames_remaining = input->waves[0].sexs*sample_rate;
@@ -164,16 +173,16 @@ void * generate(void * arg) {
                         r_sample = triangle(right_phase);
                     }
 				}
-				if (input->waves[w].cutt_freq != -1) {
-    				if (strcmp(input->waves[w].filter, "lpf") == 0) {
-						l_sample = low_pass(l_sample, &prev_out[w], alphas[w], &prev_inp[w]);
+				for (int j = 0; j < input->waves[w].filter_num; j++) {
+    				if (strcmp(input->waves[w].filters[j].name, "lpf") == 0) {
+						l_sample = low_pass(l_sample, &wave_filters[w][j].prev_out, wave_filters[w][j].alpha, &wave_filters[w][j].prev_in);
 						if (strcmp(input->waves[w].channels, "stereo") == 0) {
-							r_sample = low_pass(r_sample, &prev_out[w], alphas[w], &prev_inp[w]);
+							r_sample = low_pass(r_sample, &wave_filters[w][j].prev_out, wave_filters[w][j].alpha, &wave_filters[w][j].prev_in);
 						}
-    				} else if (strcmp(input->waves[w].filter, "hpf") == 0) {
-						l_sample = high_pass(l_sample, &prev_out[w], alphas[w], &prev_inp[w]);
+    				} else if (strcmp(input->waves[w].filters[j].name, "lpf") == 0) {
+						l_sample = high_pass(l_sample, &wave_filters[w][j].prev_out, wave_filters[w][j].alpha, &wave_filters[w][j].prev_in);
 						if (strcmp(input->waves[w].channels, "stereo") == 0) {
-							r_sample = high_pass(r_sample, &prev_out[w], alphas[w], &prev_inp[w]);
+							r_sample = high_pass(r_sample, &wave_filters[w][j].prev_out, wave_filters[w][j].alpha, &wave_filters[w][j].prev_in);
 						}
     				}
 				}
@@ -243,8 +252,6 @@ void * generate(void * arg) {
                 buffer[i] = (l_mix + r_mix) * 0.5f;
                 fprintf(data_file, "%.6f %.6f\n", 0.0f, buffer[i]);
             }
-
-			
         }
 
         if (stop_req) break;

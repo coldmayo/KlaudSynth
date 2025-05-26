@@ -3,7 +3,23 @@
 - [x] Make amplifier
 - [x] Make a way to save waveforms
 - [x] Make a way to add/subtract waveforms
+- [ ] Add the following effects:
+	- [ ] Tremolo
+	- [x] Delay
+	- [ ] Reverb
+	- [ ] Distortion
+	- [ ] Flanger
+	- [ ] Phaser
+	- [ ] Envelope Generator
+	- [ ] Ring Modulation
+	- [ ] Compressor
+	- [ ] High-Shelf filter
+	- [ ] Low-Shelf filter
+	- [ ] Tilt filter
+- [x] Add a way to add multiple filters to waves
 - [ ] Add a way to save the sounds to a lossless format
-- [ ] Make an ugly GUI
-	- Need to be able to see created waveforms
-	- Display frequencies
+- [x] Make an ugly GUI
+	- [x] Need to be able to see created waveforms
+	- [x] Display frequencies
+- [ ] Make computer keyboard function as a piano
+	- Ideally the user will type in a command and then "piano mode" would turn on

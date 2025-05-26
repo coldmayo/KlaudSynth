@@ -6,9 +6,20 @@
 #define LEN 32
 
 typedef struct {
+	char name[LEN];
+	double cutt_freq;
+	float Q;
+} FILTER;
+
+typedef struct {
+	float alpha;
+	float prev_in;
+	float prev_out;
+} FILTER_STATE;
+
+typedef struct {
     char name[LEN];
 	double freq;
-	double cutt_freq;
 	double amp;
 	double phase;
 	double sexs;
@@ -19,12 +30,13 @@ typedef struct {
     float feedback;     // Delay feedback amount
     float chorus_rate;  // Chorus modulation rate
     float chorus_depth; // Chorus modulation depth
-	char filter[LEN];
 	char wave_form[LEN];   // sine, square
 	char wave_form_r[LEN];
 	char channels[LEN];
 	char pcm_device[LEN];
 	bool saved;
+	FILTER filters[LEN];
+	int filter_num;
 } GEN_INP;
 
 typedef struct {
@@ -42,6 +54,8 @@ typedef struct {
 	GEN_INP * waves;
 	char type[LEN];   // add, sub
 	int count;
+	int filter_num;
+	FILTER filters[LEN];
 } SYNTH_WAVES;
 
 #endif // types_h_INCLUDED

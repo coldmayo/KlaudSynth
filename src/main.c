@@ -47,7 +47,6 @@ void basic_wav(GEN_INP * wave, int type) {
 	
 	strcpy(wave->name, "Not Saved");
 	wave->freq = 440;
-	wave->cutt_freq = -1;
 	wave->amp = 0.5;
 	wave->phase = 0;
 	wave->sexs = 2;
@@ -58,7 +57,6 @@ void basic_wav(GEN_INP * wave, int type) {
 	wave->feedback = 0.0f;
 	wave->chorus_rate = 0.0f;
 	wave->chorus_depth = 0.0f;
-	strcpy(wave->filter, "None");
 	
 	switch (type) {
 		case 0:
@@ -101,10 +99,14 @@ void show_info(GEN_INP * wave) {
 	printf("Phase: %f\n", wave->phase);
 	printf("Sample Rate: %d Hz\n", wave->sample_rate);
 	printf("\n---Filter and Effects Stuff---\n\n");
-	printf("Filter type: %s\n", wave->filter);
-
-	if (strcmp("None", wave->filter) != 0) {
-		printf("Cuttoff Frequency: %f Hz\n", wave->cutt_freq);
+	if (wave->filter_num > 0) {
+		printf("Filters applied:");
+		for (int i = 0; wave->filter_num > i; i++) {
+			printf(" %s", wave->filters[i].name);
+		}
+		printf("\n");
+	} else {
+		printf("No filters applied currently");
 	}
 	
 	printf("Panning: %f\n", wave->pan);
@@ -115,10 +117,7 @@ void show_info(GEN_INP * wave) {
 	printf("Chorus Depth: %f\n", wave->chorus_depth);
 }
 
-// notation: ./synth <frequency> <amplitude> <phase> <seconds> <sample rate> <wave form> <channels> <device>
-
 int main(int argc, char ** argv) {
-	//GEN_INP input = {atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), argv[4], argv[5], argv[6], argv[7]};
 
 	signal(SIGINT, handle_sigint);
 	char buff[64];
@@ -127,6 +126,7 @@ int main(int argc, char ** argv) {
 	bool wave_q = false;
 	int wave_count = 0;
 	char id[69] = "KlaudSynth";
+	int global_filter_num = 0;
 	while(1) {
 		char * inp = malloc(MAXCOMMSIZE);
 		printf("%s> ", id);
@@ -158,13 +158,17 @@ int main(int argc, char ** argv) {
 				show_info(&wave);
 			}
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "lpf") == 0) {
-			strcpy(wave.filter, "lpf");
+			strcpy(wave.filters[wave.filter_num].name, "lpf");
 			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
-			wave.cutt_freq = atoi(cutt_freq);
+			wave.filters[wave.filter_num].cutt_freq = atoi(cutt_freq);
+			wave.filters[wave.filter_num].Q = -1;
+			wave.filter_num += 1;
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "hpf") == 0) {
-			strcpy(wave.filter, "hpf");
+			strcpy(wave.filters[wave.filter_num].name, "hpf");
 			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
-			wave.cutt_freq = atoi(cutt_freq);
+			wave.filters[wave.filter_num].cutt_freq = atoi(cutt_freq);
+			wave.filters[wave.filter_num].Q = -1;
+			wave.filter_num += 1;
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "pan") == 0) {
 			char * p = slice_str(inp, buff, 4, strlen(inp) - 1);
 			float pa = atof(p);
@@ -215,13 +219,6 @@ int main(int argc, char ** argv) {
             }
 		} else if (inp[0] == 'w') {
 			char * n = slice_str(inp, buff, 2, strlen(inp)-1);
-			
-			//if (wave_count < MAX_WAVES) {
-    			//strcpy(wave.name, n);
-				//waves[wave_count] = wave;
-				//wave_count++;
-				//save_to_file();
-			//}
 			if (wave.saved == false && MAX_WAVES > wave_count) {
     			wave.saved = true;
 				strcpy(wave.name, n);
@@ -255,7 +252,6 @@ int main(int argc, char ** argv) {
 				printf("Could not find that wave, use the ls command to see all the created waves\n");
 			}
 		} else if (strcmp(slice_str(inp, buff, 0, 3), "veiw") == 0) {
-			//startUp(argc, argv);
 			pthread_create(&play, NULL, show_veiwer, NULL);
 		} else {
 			printf("Huh?\n");

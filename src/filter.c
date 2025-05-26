@@ -2,7 +2,9 @@
 
 #include <math.h>
 
-// First order recurssive filter
+// cutt off frequency from alpha
+
+// Low Pass Filter
 float low_pass(float input, float*prev_out, float alpha, float*prev_inp) {
 	float output = alpha * input + (1.0f - alpha) * (*prev_out);
     *prev_out = output;
