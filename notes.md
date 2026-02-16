@@ -9,5 +9,9 @@ Basics:
 	- Low pass: passes signals with a frequency lower than the cuttoff frequency
 	- Band pass:
 
+Goal:
+- I want to implement this code for a real hardware synthesizer powered by the STM32
+	- Check the output.pdf file to see what I am thinking on that end
+
 Example code to review:
 - Generate sound from ALSA and libasound: https://gist.github.com/ghedo/963382/815c98d1ba0eda1b486eb9d80d9a91a81d995283

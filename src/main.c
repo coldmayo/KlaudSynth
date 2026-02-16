@@ -8,256 +8,232 @@
 
 #include "types.h"
 #include "gen.h"
-//#include "plots.h"
+#include "filter.h"
+#include "init.h"
 
 #define MAXCOMMSIZE 256
 #define MAX_WAVES 20
 
-pthread_t play;
+pthread_t play_thread;
+pthread_t veiw_thread;
 volatile bool playing = false;
 volatile bool stop_req = false;
 
-void handle_sigint(int sig) {
-    if (playing) {
-        stop_req = true;
-        pthread_join(play, NULL);
-    }
-    exit(0);
+// Helper to safely slice strings for command parsing
+char * slice_str(const char * str, char * buffer, int start, int end) {
+	int len = strlen(str);
+	if (start >= len) {
+		buffer[0] = '\0';
+		return buffer;
+	}
+	if (end >= len) end = len - 1;
+
+	int j = 0;
+	for (int i = start; i <= end; ++i) {
+		buffer[j++] = str[i];
+	}
+	buffer[j] = '\0';
+	return buffer;
 }
 
-char * slice_str(const char * str, char * buffer, int start, int end) {
-    int j = 0;
-    for (int i = start; i <= end; ++i) {
-        buffer[j++] = str[i];
-    }
-    buffer[j] = 0;
-    return buffer;
+void handle_sigint(int sig) {
+	if (playing) {
+		stop_req = true;
+		pthread_join(play_thread, NULL);
+	}
+	printf("\nExiting Synth...\n");
+	exit(0);
 }
 
 void * show_veiwer(void * args) {
 	system("./SynthVeiw");
 }
 
-// type:
-    // 0: sine
-    // 1: square
-    // 2: sawtooth
-void basic_wav(GEN_INP * wave, int type) {
-	if (!wave) return;
-	
-	strcpy(wave->name, "Not Saved");
-	wave->freq = 440;
-	wave->amp = 0.5;
-	wave->phase = 0;
-	wave->sexs = 2;
-	wave->sample_rate = 44100;
-	wave->pan = 0.0;
-	wave->phase_offset = 0.25f; // Default 90° phase offset
-	wave->delay = 0.0f;
-	wave->feedback = 0.0f;
-	wave->chorus_rate = 0.0f;
-	wave->chorus_depth = 0.0f;
-	
-	switch (type) {
-		case 0:
-    		strcpy(wave->wave_form, "sine");
-    		strcpy(wave->wave_form_r, "sine");
-    		break;
-    	case 1:
-        	strcpy(wave->wave_form, "square");
-        	strcpy(wave->wave_form_r, "square");
-        	break;
-        case 2:
-            strcpy(wave->wave_form, "saw");
-            strcpy(wave->wave_form_r, "saw");
-            break;
-        case 3:
-            strcpy(wave->wave_form, "tri");
-            strcpy(wave->wave_form_r, "tri");
-            break;
-        default:
-            strcpy(wave->wave_form, "sine");
-            strcpy(wave->wave_form_r, "sine");
+const char * get_wave_name(WaveType type) {
+	switch(type) {
+		case WAVE_SINE:   return "sine";
+		case WAVE_SAW:    return "saw";
+		case WAVE_SQUARE: return "square";
+		case WAVE_TRI:    return "triangle";
+		default:          return "unknown";
 	}
-    
-	strcpy(wave->channels, "stereo");
-    strcpy(wave->pcm_device, "default");
-    wave->saved = false;
-    printf("%s wave configured\n", wave->wave_form);
 }
 
-void show_info(GEN_INP * wave) {
-	printf("\n---General---\n\n");
-	printf("Name: %s\n", wave->name);
-	printf("Wave type (left): %s\n", wave->wave_form);
-	printf("Wave type (right): %s\n", wave->wave_form_r);
-	printf("Channel Setting: %s\n", wave->channels);
-	printf("Seconds played: %f\n", wave->sexs);
-	printf("\n---Wave Stats---\n\n");
-	printf("Frequency: %f Hz\n", wave->freq);
-	printf("Amplitude: %f\n", wave->amp);
-	printf("Phase: %f\n", wave->phase);
-	printf("Sample Rate: %d Hz\n", wave->sample_rate);
-	printf("\n---Filter and Effects Stuff---\n\n");
-	if (wave->filter_num > 0) {
-		printf("Filters applied:");
-		for (int i = 0; wave->filter_num > i; i++) {
-			printf(" %s", wave->filters[i].name);
-		}
-		printf("\n");
-	} else {
-		printf("No filters applied currently");
+const char * get_filter_name(FILTER_TYPES type) {
+	switch(type) {
+		case HPF_F:   return "high pass";
+		case LPF_F:    return "low pass";
+		case BPF_F: return "band pass";
+		case NOTCH_F:    return "notch";
+		case LOW_SHELF_F: return "low shelf";
+		case HIGH_SHELF_F: return "high shelf";
+		case ALL_PASS_F: return "all pass filter";
+		case PEAKING_EQ_F: return "peaking eq";
+		default:          return "unknown";
 	}
-	
-	printf("Panning: %f\n", wave->pan);
-	printf("Phase offset: %f\n", wave->phase_offset);
-	printf("Delay: %f\n", wave->delay);
-	printf("Feedback: %f\n", wave->feedback);
-	printf("Chorus Rate: %f\n", wave->chorus_rate);
-	printf("Chorus Depth: %f\n", wave->chorus_depth);
 }
 
 int main(int argc, char ** argv) {
-
 	signal(SIGINT, handle_sigint);
-	char buff[64];
-	GEN_INP waves[20] = {0};
-	GEN_INP wave = {0};
-	bool wave_q = false;
-	int wave_count = 0;
-	char id[69] = "KlaudSynth";
-	int global_filter_num = 0;
+
+	char buff[MAXCOMMSIZE];
+	char inp[MAXCOMMSIZE];
+	SOUND * sound = init_sound();
+
+	printf("Welcome to C-Synth. Type 'new_wave' to start.\n");
+
 	while(1) {
-		char * inp = malloc(MAXCOMMSIZE);
-		printf("%s> ", id);
-		fgets(inp, MAXCOMMSIZE, stdin);
+		printf("Wave[%d]> ", sound->curr_wave);
+		if (!fgets(inp, MAXCOMMSIZE, stdin)) break;
 		inp[strcspn(inp, "\n")] = '\0';
+
 		if (strcmp(slice_str(inp, buff, 0, 4), "msine") == 0) {
-    		basic_wav(&wave, 0);
-    		wave_q = true;
-    		//printf("wave.freq after :msine = %f\n", wave.freq);
-		} else if (strcmp(slice_str(inp, buff, 0, 2), "msq") == 0) {
-    		basic_wav(&wave, 1);
-    		wave_q = true;
-		} else if (strcmp(inp, "msaw") == 0) {
-			basic_wav(&wave, 2);
-			wave_q = true;
-		} else if (strcmp(slice_str(inp, buff, 0, 3), "mtri") == 0) {
-			basic_wav(&wave, 3);
-			wave_q = true;
-		} else if (strcmp(slice_str(inp, buff, 0, 3), "info") == 0) {
-			if (strlen(inp) > 4) {
-				char * search = slice_str(inp, buff, 5, strlen(inp)-1);
-				for (int i = 0; i < wave_count; i++) {
-					if (strcmp(waves[i].name, search) == 0) {
-						show_info(&waves[i]);
-						break;
-					}
-				}
-			} else {
-				show_info(&wave);
+			sound->waves[sound->curr_wave]->type = WAVE_SINE;
+		}
+		else if (strcmp(slice_str(inp, buff, 0, 2), "msq") == 0) {
+			sound->waves[sound->curr_wave]->type = WAVE_SQUARE;
+		}
+		else if (strcmp(inp, "new_wave") == 0) {
+			if (sound->num_waves < MAX_WAVES) {
+				sound->waves[sound->num_waves] = (WAVE *)malloc(sizeof(WAVE));
+				init_wave(sound->waves[sound->num_waves], sound->num_waves);
+				sound->curr_wave = sound->num_waves;
+				sound->num_waves++;
+				printf("Created Wave %d\n", sound->curr_wave);
 			}
-		} else if (strcmp(slice_str(inp, buff, 0, 2), "lpf") == 0) {
-			strcpy(wave.filters[wave.filter_num].name, "lpf");
-			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
-			wave.filters[wave.filter_num].cutt_freq = atoi(cutt_freq);
-			wave.filters[wave.filter_num].Q = -1;
-			wave.filter_num += 1;
+		}
+		// Filter Commands
+		else if (strcmp(slice_str(inp, buff, 0, 2), "lpf") == 0) {
+			WAVE *cw = sound->waves[sound->curr_wave];
+			if (cw->num_filters < 5) { // Assuming max 5 filters
+				cw->filters[cw->num_filters] = (FILTER*)malloc(sizeof(FILTER));
+				init_filter(cw->filters[cw->num_filters], cw->num_filters, LPF_F);
+				cw->num_filters++;
+				printf("LPF added to Wave %d\n", sound->curr_wave);
+			}
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "hpf") == 0) {
-			strcpy(wave.filters[wave.filter_num].name, "hpf");
-			char * cutt_freq = slice_str(inp, buff, 4, strlen(inp)-1);
-			wave.filters[wave.filter_num].cutt_freq = atoi(cutt_freq);
-			wave.filters[wave.filter_num].Q = -1;
-			wave.filter_num += 1;
-		} else if (strcmp(slice_str(inp, buff, 0, 2), "pan") == 0) {
-			char * p = slice_str(inp, buff, 4, strlen(inp) - 1);
-			float pa = atof(p);
-			if (pa <= 1 && pa >= -1) {
-    			printf("Set pan to: %f\n", pa);
-				wave.pan = pa;
+			WAVE *cw = sound->waves[sound->curr_wave];
+			if (cw->num_filters < 5) {
+    			cw->filters[cw->num_filters] = (FILTER*)malloc(sizeof(FILTER));
+				init_filter(cw->filters[cw->num_filters], cw->num_filters, HPF_F);
+				cw->num_filters++;
+				printf("HPF added to Wave %d\n", sound->curr_wave);
 			}
-		} else if (strcmp(slice_str(inp, buff, 0, 2), "amp") == 0) {
-			char * a = slice_str(inp, buff, 4, strlen(inp)-1);
-			float am = atof(a);
-			wave.amp = am;
-			printf("Set amplitude to: %f\n", am);
-		} else if (strcmp(slice_str(inp, buff, 0, 0), "p") == 0) {
-    		if (!playing) {
+		} else if (strcmp(slice_str(inp, buff, 0, 2), "bpf") == 0) {
+			WAVE *cw = sound->waves[sound->curr_wave];
+			if (cw->num_filters < 5) {
+    			cw->filters[cw->num_filters] = (FILTER*)malloc(sizeof(FILTER));
+				init_filter(cw->filters[cw->num_filters], cw->num_filters, BPF_F);
+				cw->num_filters++;
+				printf("BPF added to Wave %d\n", sound->curr_wave);
+			}
+		} else if (strcmp(slice_str(inp, buff, 0, 4), "notch") == 0) {
+			WAVE *cw = sound->waves[sound->curr_wave];
+			if (cw->num_filters < 5) {
+    			cw->filters[cw->num_filters] = (FILTER*)malloc(sizeof(FILTER));
+				init_filter(cw->filters[cw->num_filters], cw->num_filters, NOTCH_F);
+				cw->num_filters++;
+				printf("Notch filter added to Wave %d\n", sound->curr_wave);
+			}
+		} else if (strcmp(slice_str(inp, buff, 0, 10), "cutoff freq") == 0) {
+    		float cut = atof(inp + 12);
+    		WAVE * wave_rn = sound->waves[sound->curr_wave];
+    		FILTER * filter_i = wave_rn->curr_filter;
+    		if (cut < 20000 && cut > 0) {
+        		sound->waves[sound->curr_wave]->filters[filter_i]->cutt_freq = cut;
+    		}
+    		printf("Cut off Frequency for %s (index %d) filter is %d", get_filter_name(wave_rn->filters[filter_i]->type), filter_i, sound->waves[sound->curr_wave]->filters[filter_i]->cutt_freq);
+		} else if (strcmp(slice_str(inp, buffer, 0, 8), "resonance\n") == 0) {
+    		WAVE * wave_rn = sound->waves[sound->curr_wave];
+    		FILTER * filter_i = wave_rn->curr_filter;
+    		float res = atof(inp + 10);
+    		if (res > 0 && res < 20000) {
+        		sound->waves[sound->curr_wave]->filters[filter_i]->resonance = res;
+    		}
+    		printf("Resonance Frequency for %s (index %d) filter is %d\n", get_filter_name(wave_rn->filters[filter_i]->type), filter_i, sound->waves[sound->curr_wave]->filters[filter_i]->resonance);
+		} else if (strcmp(slice_str(inp, buff, 0, 4), "drive")) {
+    		WAVE * wave_rn = sound->waves[sound->curr_wave];
+    		FILTER * filter_i = wave_rn->curr_filter;
+    		float drive = atof(inp + 6);
+    		if (drive > 0 && drive < 20000) {
+        		sound->waves[sound->curr_wave]->filters[filter_i]->drive = drive;
+    		}
+    		printf("Drive for %s (index %d) filter is %d\n", get_filter_name(wave_rn->filters[filter_i]->type), filter_i, sound->waves[sound->curr_wave]->filters[filter_i]->drive);
+		} else if (strcmp(slice_str(inp, buff, 0, 10), "center freq")) {
+    		WAVE * wave_rn = sound->waves[sound->curr_wave];
+    		FILTER * filter_i = wave_rn->curr_filter;
+    		float cent = atof(inp + 12);
+    		if (cent > 0 && cent < 20000) {
+        		sound->waves[sound->curr_wave]->filters[filter_i]->center_freq = cent;
+    		}
+    		printf("Center Frequency for %s (index %d) filter is %d\n", get_filter_name(wave_rn->filters[filter_i]->type), filter_i, sound->waves[sound->curr_wave]->filters[filter_i]->center_freq);
+		} else if (strcmp(slice_str(inp, buff, 0, 2), "pan") == 0) {
+			float pa = atof(inp + 4); // Start after "pan "
+			if (pa <= 1.0f && pa >= -1.0f) {
+				sound->pan = pa;
+				printf("Pan set to %.2f\n", pa);
+			}
+		} else if (strcmp(inp, "p") == 0) {
+			if (!playing) {
+				sound->env->state = ATTACK;
+				for (int i = 0; i < sound->num_waves; i++) {
+					sound->waves[i]->is_active = true;
+				}
 				playing = true;
 				stop_req = false;
-				SYNTH_WAVES* synth_input = malloc(sizeof(SYNTH_WAVES));
-    			synth_input->waves = malloc(wave_count * sizeof(GEN_INP));
-    			if (strlen(inp) > 1) {
-					strcpy(synth_input->type, slice_str(inp, buff, 2, strlen(inp)-1));
-    			} else {
-					strcpy(synth_input->type, "sub");
-    			}
-    			synth_input->count = wave_count;
-    			printf("waves playing:\n");
-    			for (int i = 0; i < wave_count; i++) {
-        			synth_input->waves[i] = waves[i];
-        			printf("%s\n", synth_input->waves[i].name);
-   				}
-   				printf("synthesis type: %s\n", synth_input->type);
-    			int res = pthread_create(&play, NULL, generate, synth_input);
-    			if (res != 0) {
-            		fprintf(stderr, "Error creating thread: %d\n", res);
-            		playing = false;
-            		free(synth_input->waves);
-            		free(synth_input);
-        		}
-    		} else {
-				printf("Already playing\n");
-    		}
-		} else if (strcmp(slice_str(inp, buff, 0, 3), "stop") == 0) {
+				pthread_create(&play_thread, NULL, generate, sound);
+				printf("Playback started...\n");
+			}
+		} else if (strcmp(inp, "stop") == 0) {
 			if (playing) {
-                stop_req = true;
-                pthread_join(play, NULL);
-                printf("Playback stopped\n");
-            } else {
-                printf("No playback in progress\n");
-            }
-		} else if (inp[0] == 'w') {
-			char * n = slice_str(inp, buff, 2, strlen(inp)-1);
-			if (wave.saved == false && MAX_WAVES > wave_count) {
-    			wave.saved = true;
-				strcpy(wave.name, n);
-				waves[wave_count] = wave;
-				wave_count++;
-			} else {
-				for (int i = 0; wave_count > i; i++) {
-					if (strcmp(waves[i].name, wave.name) == 0) {
-						waves[i] = wave;   // overwriteing the old one I guess
-					}
-				}
+				stop_req = true;
+				pthread_join(play_thread, NULL);
+				playing = false;
+				printf("Playback stopped.\n");
 			}
-		} else if (strcmp(inp, "q") == 0) {
-    		free(inp);
-			return 0;
 		} else if (strcmp(inp, "ls") == 0) {
-			for (int i = 0; i < wave_count; i++) {
-				printf("%s\n", waves[i].name);
-			}
-		} else if (strcmp(slice_str(inp, buff, 0, 3), "edit") == 0) {
-			char * search = slice_str(inp, buff, 5, strlen(inp)-1);
-			bool didthing = false;
-			for (int i = 0; i < wave_count; i++) {
-				if (strcmp(waves[i].name, search) == 0) {
-					wave = waves[i];
-					didthing = true;
-					break;
-				}
-			}
-			if (!didthing) {
-				printf("Could not find that wave, use the ls command to see all the created waves\n");
-			}
-		} else if (strcmp(slice_str(inp, buff, 0, 3), "veiw") == 0) {
-			pthread_create(&play, NULL, show_veiwer, NULL);
-		} else {
-			printf("Huh?\n");
-		}
-		if (wave_q) {
-			strcpy(id, wave.name);
+    		for (int i = 0; sound->num_waves > i; i++) {
+        		printf("Index: %d Type: %s\n", i, get_wave_name(sound->waves[i]->type));
+    		}
+    	// change wave
+		} else if (strcmp(inp, "cw") == 0) {
+    		int wn;
+    		for (int i = 0; i < sound->num_waves; i++) {
+        		printf("Index: %d, Type: %s\n", i, get_wave_name(sound->waves[i]->type));
+    		}
+    		printf("Choose which wave to switch to> ");
+    		scanf("%d", &wn);
+    		if (wn <= sound->num_waves) {
+        		sound->curr_wave = wn;
+        		printf("Current Wave:\nIndex: %d, Type: %s\n", sound->curr_wave, get_wave_name(sound->waves[sound->curr_wave]->type));
+    		}
+    	// next wave
+		} else if (strcmp(inp, "nw") == 0) {
+    		if (sound->curr_wave + 1 > sound->num_waves-1) {
+        		sound->curr_wave = 0;
+    		} else {
+        		sound->curr_wave += 1;
+    		}
+    		printf("Current Wave:\nIndex: %d, Type: %s\n", sound->curr_wave, get_wave_name(sound->waves[sound->curr_wave]->type));
+    	// previous wave
+		} else if (strcmp(inp, "pw") == 0) {
+    		if (sound->curr_wave - 1 < 0) {
+        		sound->curr_wave = 0;
+    		} else {
+        		sound->curr_wave -= 1;
+    		}
+		} else if (strcmp(inp, "veiw") == 0) {
+    		pthread_create(&veiw_thread, NULL, show_veiwer, NULL);
+		} else if (strcmp(inp, "q") == 0) {
+			break;
 		}
 	}
+
+	// Cleanup before exit
+	if (playing) {
+		stop_req = true;
+		pthread_join(play_thread, NULL);
+	}
+	// Note: You should call a full cleanup_sound() here to free all waves/filters
+	return 0;
 }

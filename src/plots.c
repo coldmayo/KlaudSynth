@@ -8,10 +8,19 @@ typedef struct {
     char **argv;
 } GtkThreadData;
 
+gboolean update_images(gpointer data) {
+    GtkWidget **images = (GtkWidget **)data;
+    gtk_image_set_from_file(GTK_IMAGE(images[0]), "plot.png");
+    gtk_image_set_from_file(GTK_IMAGE(images[1]), "freq_plot.png");
+    return TRUE;
+}
+
 gpointer gtk_thread_func(gpointer user_data) {
+    
     GtkThreadData *data = (GtkThreadData *)user_data;
     GtkWidget *window;
     GtkWidget *image;
+    static GtkWidget * images[2];
 	GtkWidget * freq_image;
     gtk_init(&data->argc, &data->argv);
 
@@ -21,13 +30,19 @@ gpointer gtk_thread_func(gpointer user_data) {
     gtk_window_set_default_size(GTK_WINDOW(window), 400, 300);
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
+    image = gtk_image_new_from_file("plot.png");
+    freq_image = gtk_image_new_from_file("freq_plot.png");
+    images[0] = image;
+    images[1] = freq_image;
+    g_timeout_add(1000, update_images, images);
+
 	// Create tab container
 	GtkWidget * notebook = gtk_notebook_new();
 	gtk_container_add(GTK_CONTAINER(window), notebook);
 
 	// Tab 1: Waveform Veiwer:
 	GtkWidget *tab1_label = gtk_label_new("Waveform Veiwer");
-    image = gtk_image_new_from_file("plot.png");
+    
     if (image == NULL) {
         g_warning("Failed to load image plot.png");
         image = gtk_label_new("Image not found");
@@ -36,11 +51,12 @@ gpointer gtk_thread_func(gpointer user_data) {
 
     // Tab 2: Frequency Veiwer
     GtkWidget *tab2_label = gtk_label_new("Frequency Veiwer");
-    freq_image = gtk_image_new_from_file("freq_plot.png");
+    
     if (image == NULL) {
         g_warning("Failed to load image freq_plot.png");
         image = gtk_label_new("Image not found");
     }
+    
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), freq_image, tab2_label);
     
     gtk_widget_show_all(window);
@@ -53,6 +69,9 @@ gpointer gtk_thread_func(gpointer user_data) {
 
 int main(int argc, char *argv[]) {
     if (!gtk_thread) {
+
+        // make the plots
+    	system("source .venv/bin/activate ; python plotting.py");
         GtkThreadData *thread_data = g_new(GtkThreadData, 1);
         thread_data->argc = argc;
         thread_data->argv = argv;

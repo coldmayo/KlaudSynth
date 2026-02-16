@@ -29,6 +29,7 @@ def plot_waves(data):
     plt.tight_layout()
     #plt.show()
     plt.savefig("plot.png")
+    plt.close()
 
 def plot_freq(data):
     left_ch = data[:, 0]
