@@ -99,6 +99,10 @@ double feedback_comb_filter(double input, REVERB_STATE *state, double mix, doubl
     return (input * (1.0 - mix)) + (delayed_output * mix);
 }
 
+double reverb_conv(double input, double mix) {
+    
+}
+
 // Schroeder Reverb: Parallel Combs followed by Series All-Passes
 double reverb(double input, MASTER_REVERB *master_state, double mix) {
     double wet_signal = 0.0;
@@ -149,4 +153,16 @@ double phaser(double input, LFO * lfo, PHASER_STATE * state, double feedback, do
     }
 
     return (input * (1.0 - mix)) + (processed_signal * mix);
+}
+
+// soft-clipping distortion
+double dist_soft_clip(double input, double gain) {
+	return tanhf(input * gain);
+}
+
+// hard-clipping distortion
+double dist_hard_clip(double input, double thresh) {
+    if (input > thresh) return thresh;
+    if (input < -thresh) return -thresh;
+    return input;
 }

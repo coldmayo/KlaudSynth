@@ -115,6 +115,8 @@ void * generate(void * arg) {
 	unsigned long frames_remaining = 5 * rate;
 	float buffer[1024 * 2]; // Max size for stereo
 
+	int pitch;
+
 	while (frames_remaining > 0) {
     	int frames_to_process = frames_remaining > 256 ? 256 : frames_remaining;
 		memset(buffer, 0, frames_to_process * chans * sizeof(float));
@@ -126,12 +128,14 @@ void * generate(void * arg) {
 			float l_mix = 0.0f;
 			float r_mix = 0.0f;
 
+			double raw_sample = 0.0;
+
+
 			for (int w = 0; w < sound_data->num_waves; w++) {
 				WAVE * wave = sound_data->waves[w];
-				double increment = (2.0 * M_PI * wave->pitch) / rate;
+				pitch = wave->pitch * pow(2.0, (double)wave->octave);
+				double increment = (2.0 * M_PI * pitch) / rate;
 				if (!wave->is_active) continue;
-
-				double raw_sample = 0.0;
 
 				// Phase update
 				wave->current_phase += increment;
@@ -147,21 +151,104 @@ void * generate(void * arg) {
 				// Filter Processing
 				for (int f = 0; f < wave->num_filters; f++) {
 					FILTER * fil = wave->filters[f];
-					// Calling the BPF/LPF functions from your previous filter file
-					// Simplified: just LPF for example
-					raw_sample = LPF(0.1, raw_sample, &fil->prev_out[0]);
+
+					double fs = (double)rate;
+    				double fc = fil->cutt_freq;
+
+    				if (fc < 10.0) fc = 10.0;
+    				if (fc > fs / 2.1) fc = fs / 2.1;
+
+					switch (fil->type) {
+						case LPF_F: {
+							double alpha = (2.0 * M_PI * fc / fs) / (1.0 + (2.0 * M_PI * fc / fs));
+							raw_sample = LPF(alpha, raw_sample, &fil->prev_out[0]);
+							break;
+						}
+						case HPF_F: {
+							double alpha = 1.0 / (1.0 + (2.0 * M_PI * fc / fs));
+							raw_sample = HPF(alpha, raw_sample, &fil->prev_out[0], &fil->prev_inp[0]);
+							break;
+						}
+						case BPF_F: {
+							// Biquads require indices 0 and 1 for history
+							raw_sample = BPF(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							break;
+						}
+						case HPF_F_2: {
+    						raw_sample = HPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						break;
+						}
+						case LPF_F_2: {
+    						raw_sample = LPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						break;
+						}
+						default:
+							// Pass-through if type is unknown
+							break;
+					}
 				}
 
-				l_mix += (float)(raw_sample * left_gain * wave->volume);
-				r_mix += (float)(raw_sample * right_gain * wave->volume);
+				l_mix += (float)(raw_sample * wave->volume);
+				r_mix += (float)(raw_sample * wave->volume);
 			}
 
-			double env_vol = update_envelope(sound_data->env, rate, true);
-			l_mix *= (float)(env_vol * sound_data->master_volume);
-			r_mix *= (float)(env_vol * sound_data->master_volume);
+			double l_sample = (double)l_mix;
+			double r_sample = (double)r_mix;
+			// Global filter handling
+				for (int f = 0; f < sound_data->num_filts; f++) {
+					FILTER * fil = sound_data->glob_filters[f];
 
-			//l_mix *= sound_data->master_volume;
-			//r_mix *= sound_data->master_volume;
+					double fs = (double)rate;
+    				double fc = fil->cutt_freq;
+
+    				if (fc < 10.0) fc = 10.0;
+    				if (fc > fs / 2.1) fc = fs / 2.1;
+
+					switch (fil->type) {
+						case LPF_F: {
+							double alpha = (2.0 * M_PI * fc / fs) / (1.0 + (2.0 * M_PI * fc / fs));
+							l_sample = LPF(alpha, raw_sample, &fil->prev_out[0]);
+							r_sample = LPF(alpha, raw_sample, &fil->prev_out[0]);
+							break;
+						}
+						case HPF_F: {
+							double alpha = 1.0 / (1.0 + (2.0 * M_PI * fc / fs));
+							l_sample = HPF(alpha, raw_sample, &fil->prev_out[0], &fil->prev_inp[0]);
+							r_sample = HPF(alpha, raw_sample, &fil->prev_out[0], &fil->prev_inp[0]);
+							break;
+						}
+						case BPF_F: {
+							// require indices 0 and 1 for history
+							l_sample = BPF(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							r_sample = BPF(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							break;
+						}
+						case HPF_F_2: {
+    						l_sample = HPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							r_sample = HPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						break;
+						}
+						case LPF_F_2: {
+    						r_sample = LPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							l_sample = LPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						break;
+						}
+						default:
+							// Pass-through if type is unknown
+							break;
+					}
+				}
+				l_mix = (float)l_sample;
+				r_mix = (float)r_sample;
+
+			double env_vol = update_envelope(sound_data->env, rate, true);
+			float final_gain = (float)(env_vol * sound_data->master_volume);
+
+			float l_pan = sqrt(0.5 * (1.0 - sound_data->pan));
+			float r_pan = sqrt(0.5 * (1.0 + sound_data->pan));
+
+			l_mix *= (final_gain * l_pan);
+			r_mix *= (final_gain * r_pan);
 
 			if (sound_data->channels == STEREO) {
     			buffer[i*2] = l_mix;

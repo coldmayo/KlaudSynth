@@ -10,11 +10,57 @@ double LPF(double alpha, double curr_sample, double * prev_output) {
     return output;
 }
 
-// Simple One-Pole High Pass Filter
+// Biquad (second order) version
+double LPF_2(double input, double * prev_inp_1, double * prev_inp_2, double * prev_out_1, double * prev_out_2, double Q, double cutoff_freq, int sample_rate) {
+
+    double w0 = 2.0 * M_PI * cutoff_freq / (double)sample_rate;
+    double alpha = sin(w0) / (2.0 * Q);
+
+    double b0 = (1.0 - cos(w0)) / 2.0;
+    double b1 = 1.0 - cos(w0);
+    double b2 = (1.0 - cos(w0)) / 2.0;
+    double a0 = 1.0 + alpha;
+    double a1 = -2.0 * cos(w0);
+    double a2 = 1.0 - alpha;
+
+    double output = (b0/a0)*input + (b1/a0)*(*prev_inp_1) + (b2/a0)*(*prev_inp_2) - (a1/a0)*(*prev_out_1) - (a2/a0)*(*prev_out_2);
+
+    *prev_inp_2 = *prev_inp_1;
+    *prev_inp_1 = input;
+    *prev_out_2 = *prev_out_1;
+    *prev_out_1 = output;
+
+    return output;
+}
+
+// High Pass Filter
 double HPF(double alpha, double curr_sample, double * prev_out, double * prev_inp) {
     double output = alpha * (*prev_out + curr_sample - (*prev_inp));
     *prev_out = output;
     *prev_inp = curr_sample;
+    return output;
+}
+
+// Second Order High Pass Filter
+double HPF_2(double input, double * prev_inp_1, double * prev_inp_2, double * prev_out_1, double * prev_out_2, double Q, double cutoff_freq, int sample_rate) {
+
+    double w0 = 2.0 * M_PI * cutoff_freq / (double)sample_rate;
+    double alpha = sin(w0) / (2.0 * Q);
+
+    double b0 = (1.0 + cos(w0)) / 2.0;
+    double b1 = 1.0 + cos(w0);
+    double b2 = (1.0 + cos(w0)) / 2.0;
+    double a0 = 1.0 + alpha;
+    double a1 = -2.0 * cos(w0);
+    double a2 = 1.0 - alpha;
+
+    double output = (b0/a0)*input + (b1/a0)*(*prev_inp_1) + (b2/a0)*(*prev_inp_2) - (a1/a0)*(*prev_out_1) - (a2/a0)*(*prev_out_2);
+
+    *prev_inp_2 = *prev_inp_1;
+    *prev_inp_1 = input;
+    *prev_out_2 = *prev_out_1;
+    *prev_out_1 = output;
+
     return output;
 }
 

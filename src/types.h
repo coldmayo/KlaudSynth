@@ -37,7 +37,9 @@ typedef enum {
 
 typedef enum {
 	HPF_F,
+	HPF_F_2,
 	LPF_F,
+	LPF_F_2,
 	BPF_F,
 	NOTCH_F,
 	LOW_SHELF_F,
@@ -186,13 +188,10 @@ typedef struct {
 	int curr_lfo;
 	int index;
 	int num_filters;
-	int num_fx;
 	bool is_active;
 	int curr_filter;
-	int curr_fx;
 	int num_lfos;
 	FILTER ** filters;
-	FX ** fxs;
 	LFO ** lfos;
 	double current_phase;
 } WAVE;
@@ -219,9 +218,18 @@ typedef enum {
 	MONO
 } ChanType;
 
+typedef enum {
+    GLOBAL,
+    WAVE_SPEC
+} FILTER_FOCUS;
+
 typedef struct {
 	int num_waves;
+	int num_filts;
+	int curr_filter;
 	int sample_rate;
+	int curr_fx;
+	int num_fx;
 	int curr_wave;
 	int volume;
 	double master_volume;
@@ -230,8 +238,11 @@ typedef struct {
 	double current_tempo;
 	double glide_time;
 	double pan;
+	FX ** fxs;
 	ChanType channels;
+	FILTER_FOCUS focus;
 	ENVELOPE * env;
+	FILTER ** glob_filters;
 	WAVE ** waves;
 } SOUND;
 

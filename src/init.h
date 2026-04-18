@@ -4,6 +4,7 @@
 #include "types.h"
 
 FILTER * init_filter(FILTER * filter, int index, FILTER_TYPES type);
+FX * init_FX(FX * eff, int i, FX_TYPES type, int sample_rate);
 WAVE * init_wave(WAVE * dawave, int i);
 SOUND * init_sound();
 
