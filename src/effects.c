@@ -4,6 +4,7 @@
 
 #include "types.h"
 #include "filter.h"
+#include "convolution.h"
 
 // Chorus Effect: Uses a modulated delay line to create pitch thickness
 double chorus(double input, CHORUS_STATE *state, double mix, LFO * lfo, int sample_rate) {

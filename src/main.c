@@ -396,30 +396,27 @@ int main(int argc, char ** argv) {
 		} else if (strcmp("fx", slice_str(inp, buff, 0, 1)) == 0) {
     		char * typ = inp + 3;
     		FX_TYPES type_fx;
-    		bool type_ass = false;
+    		int type_ass = 0;
     		
         		if (strcmp(typ, "chorus") == 0) {
             		type_fx = CHORUS;
-            		type_ass = true;
+            		type_ass = 1;
         		} else if (strcmp(typ, "reverb") == 0) {
             		type_fx = REVERB;
-            		type_ass = true;
+            		type_ass = 1;
         		} else if (strcmp(typ, "flanger") == 0) {
             		type_fx = FLANGER;
-            		type_ass = true;
+            		type_ass = 1;
         		} else if (strcmp(typ, "delay") == 0) {
             		type_fx = DELAY;
-            		type_ass = true;
+            		type_ass = 1;
         		} else if (strcmp(typ, "phaser") == 0) {
             		type_fx = PHASER;
-            		type_ass = true;
-        		} else if (strcmp(typ, "params") == 0) {
-            		sound_effect_param(sound);
-            		type_ass = true;
+            		type_ass = 1;
         		} else {
-            		type_ass = false;
+            		type_ass = 0;
         		}
-    		if (type_ass) {
+    		if (type_ass == 1) {
         		sound->fxs = (FX **)realloc(sound->fxs, sizeof(FX *) * (sound->num_fx + 1));	
         		sound->fxs[sound->num_fx] = (FX *)malloc(sizeof(FX));	
         		
@@ -428,8 +425,26 @@ int main(int argc, char ** argv) {
         		sound->curr_fx = sound->num_fx;
 				sound->num_fx++;
         		printf("Added a %s filter\n", typ);
-    		} else {
+    		} else if (type_ass == 0) {
         		printf("Effects allowed: chorus, reverb, flanger, delay, phaser\n");
+    		}
+		} else if (strcmp(slice_str(inp, buff, 0, 2), "mix") == 0) {
+    		double mi = atof(inp + 4);
+    		if (mi <= 100 && mi >= 0) {
+        		sound->fxs[sound->curr_fx]->mix = mi;
+        		printf("Dry/Wet mix for filter index: %d set to %lf\n", sound->curr_fx, mi);
+    		}
+		} else if (strcmp(slice_str(inp, buff, 0, 7), "feedback") == 0) {
+    		double feed = atof(inp + 9);
+    		if (feed <= 100 && feed >= 0) {
+        		sound->fxs[sound->curr_fx]->feedback = feed;
+        		printf("Feedback for filter index: %d set to %lf\n", sound->curr_fx, feed);
+    		}
+		} else if (strcmp(slice_str(inp, buff, 0, 3), "time") == 0) {
+    		double t = atof(inp + 5);
+    		if (t < 2 && t > 0) {
+        		sound->fxs[sound->curr_fx]->time = t;
+        		printf("Time for filter index: %d set to %lf\n", sound->curr_fx, t);
     		}
 		} else if (strcmp(slice_str(inp, buff, 0, 2), "pan") == 0) {
 			float pa = atof(inp + 4); // Start after "pan "
@@ -475,9 +490,34 @@ int main(int argc, char ** argv) {
 				playing = false;
 				printf("Playback stopped.\n");
 			}
-		} else if (strcmp(inp, "ls") == 0) {
-    		for (int i = 0; sound->num_waves > i; i++) {
-        		printf("Index: %d Type: %s\n", i, get_wave_name(sound->waves[i]->type));
+		} else if (strncmp(inp, "ls", 2) == 0) {
+    		char *typ = (strlen(inp) > 3) ? inp + 3 : "";
+    		if (strcmp(typ, "wave") == 0) {
+        		for (int i = 0; sound->num_waves > i; i++) {
+        			printf("Index: %d Type: %s\n", i, get_wave_name(sound->waves[i]->type));
+    			}
+    		} else if (strcmp(typ, "filter global") == 0) {
+        		printf("--- Master Filter Chain ---\n");
+				for (int i = 0; i < sound->num_filts; i++) {
+					printf("%s [%d] %s (Freq: %.1f)\n", (i == sound->curr_filter ? "->" : "   "), i, get_filter_name(sound->glob_filters[i]->type), sound->glob_filters[i]->cutt_freq);
+				}
+				if (sound->num_filts == 0) printf(" (No master filters active)\n");
+    		} else if (strcmp(typ, "filter wave") == 0) {
+        		if (sound->num_waves == 0) {
+					printf("No waves created yet.\n");
+				} else {
+					WAVE *cw = sound->waves[sound->curr_wave];
+					printf("--- Filters for Wave %d ---\n", sound->curr_wave);
+					for (int i = 0; i < cw->num_filters; i++) {
+						printf("%s [%d] %s (Freq: %.1f)\n", (i == cw->curr_filter ? "->" : "   "), i, get_filter_name(cw->filters[i]->type), cw->filters[i]->cutt_freq);
+					}
+				}
+    		} else if (strcmp(typ, "fx") == 0) {
+        		for (int i = 0; sound->num_fx > i; i++) {
+            		sound_effect_param(sound);
+        		}
+    		} else {
+        		printf("Usage: ls [wave|filter global|filter wave|fx] %s\n", typ);
     		}
     	// change wave
 		} else if (strcmp(inp, "cw") == 0) {

@@ -113,25 +113,31 @@ FX * init_FX(FX * eff, int i, FX_TYPES type, int sample_rate) {
 
     switch (type) {
         case CHORUS:
-            eff->lfo = (LFO *)malloc(sizeof(LFO));
-            eff->chorus_state = (CHORUS_STATE *)malloc(sizeof(CHORUS_STATE *));
+            eff->lfo = malloc(sizeof(LFO));
+            eff->lfo->rate  = 0.5;   // Hz
+    		eff->lfo->depth = 5.0;   // ms
+    		eff->lfo->curr_phase = 0.0;
+            eff->chorus_state = malloc(sizeof(CHORUS_STATE));
             init_chorus_state(eff->chorus_state); 
             break;
         case FLANGER:
-            eff->flanger_state = (FLANGER_STATE *)malloc(sizeof(FLANGER_STATE *));
+            eff->flanger_state = malloc(sizeof(FLANGER_STATE));
             init_flanger_state(eff->flanger_state, sample_rate);
             break;
         case DELAY:
-            eff->delay_state = (DELAY_STATE *)malloc(sizeof(DELAY_STATE *));
+            eff->delay_state = malloc(sizeof(DELAY_STATE));
             init_delay_state(eff->delay_state, sample_rate);
             break;
         case REVERB:
-            eff->reverb_state = (REVERB_STATE *)malloc(sizeof(REVERB_STATE *));
-            init_reverb_state(eff->reverb_state);
+            eff->reverb_state = malloc(sizeof(MASTER_REVERB));
+            init_master_reverb(eff->reverb_state, sample_rate);
             break;
         case PHASER:
-            eff->lfo = (LFO *)malloc(sizeof(LFO));
-            eff->phaser_state = (PHASER_STATE *)malloc(sizeof(PHASER_STATE *));
+            eff->lfo = malloc(sizeof(LFO));
+            eff->lfo->rate  = 0.5;   // Hz
+    		eff->lfo->depth = 5.0;   // ms
+    		eff->lfo->curr_phase = 0.0;
+            eff->phaser_state = malloc(sizeof(PHASER_STATE));
             init_phaser_state(eff->phaser_state);
             break;
         default:

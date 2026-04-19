@@ -8,6 +8,7 @@
 
 #include "types.h"
 #include "filter.h"
+#include "effects.h"
 
 // Renamed to avoid math.h collision
 double osc_sine(double phase) {
@@ -207,30 +208,30 @@ void * generate(void * arg) {
 					switch (fil->type) {
 						case LPF_F: {
 							double alpha = (2.0 * M_PI * fc / fs) / (1.0 + (2.0 * M_PI * fc / fs));
-							l_sample = LPF(alpha, raw_sample, &fil->prev_out[0]);
-							r_sample = LPF(alpha, raw_sample, &fil->prev_out[0]);
+							l_sample = LPF(alpha, l_sample, &fil->prev_out[0]);
+							r_sample = LPF(alpha, r_sample, &fil->prev_out[0]);
 							break;
 						}
 						case HPF_F: {
 							double alpha = 1.0 / (1.0 + (2.0 * M_PI * fc / fs));
-							l_sample = HPF(alpha, raw_sample, &fil->prev_out[0], &fil->prev_inp[0]);
-							r_sample = HPF(alpha, raw_sample, &fil->prev_out[0], &fil->prev_inp[0]);
+							l_sample = HPF(alpha, l_sample, &fil->prev_out[0], &fil->prev_inp[0]);
+							r_sample = HPF(alpha, r_sample, &fil->prev_out[0], &fil->prev_inp[0]);
 							break;
 						}
 						case BPF_F: {
 							// require indices 0 and 1 for history
-							l_sample = BPF(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
-							r_sample = BPF(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							l_sample = BPF(l_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							r_sample = BPF(r_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
 							break;
 						}
 						case HPF_F_2: {
-    						l_sample = HPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
-							r_sample = HPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						l_sample = HPF_2(l_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							r_sample = HPF_2(r_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
     						break;
 						}
 						case LPF_F_2: {
-    						r_sample = LPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
-							l_sample = LPF_2(raw_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+    						r_sample = LPF_2(r_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
+							l_sample = LPF_2(l_sample, &fil->prev_inp[0], &fil->prev_inp[1], &fil->prev_out[0], &fil->prev_out[1], fil->resonance, fc, rate);
     						break;
 						}
 						default:
@@ -238,9 +239,38 @@ void * generate(void * arg) {
 							break;
 					}
 				}
+
+				for (int x = 0; x < sound_data->num_fx; x++) {
+					FX * fx = sound_data->fxs[x];
+
+					switch(fx->type) {
+						case CHORUS:
+							r_sample = chorus(r_sample, fx->chorus_state, fx->mix, fx->lfo, rate);
+							l_sample = chorus(l_sample, fx->chorus_state, fx->mix, fx->lfo, rate);
+							break;
+						case FLANGER:
+							r_sample = flanger(r_sample, fx->flanger_state, fx->mix, fx->feedback, rate);
+							l_sample = flanger(l_sample, fx->flanger_state, fx->mix, fx->feedback, rate);
+							break;
+						case DELAY:
+							r_sample = delay(r_sample, fx->delay_state, fx->mix, fx->feedback);
+							l_sample = delay(l_sample, fx->delay_state, fx->mix, fx->feedback);
+							break;
+						case REVERB:
+							r_sample = reverb(r_sample, fx->reverb_state, fx->mix);
+							l_sample = reverb(l_sample, fx->reverb_state, fx->mix);
+							break;
+						case PHASER:
+							r_sample = phaser(r_sample, fx->lfo, fx->phaser_state, fx->feedback, fx->mix, rate);
+							l_sample = phaser(l_sample, fx->lfo, fx->phaser_state, fx->feedback, fx->mix, rate);
+							break;
+						default:
+							break;
+					}
+				}
+
 				l_mix = (float)l_sample;
 				r_mix = (float)r_sample;
-
 			double env_vol = update_envelope(sound_data->env, rate, true);
 			float final_gain = (float)(env_vol * sound_data->master_volume);
 

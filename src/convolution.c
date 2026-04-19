@@ -125,7 +125,7 @@ void FFT(double complex * x, int N) {
     }
 }
 
-void fft_conv(double complex *x, int N, double complex *h, int M) {
+double complex * fft_conv(double complex *x, int N, double complex *h, int M) {
 
     int size = next_power_of_two(N + M - 1);
 
@@ -145,4 +145,6 @@ void fft_conv(double complex *x, int N, double complex *h, int M) {
     IFFT(X, size);
 
     free(H);
+
+    return X;
 }

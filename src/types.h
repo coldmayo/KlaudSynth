@@ -7,9 +7,9 @@
 #define MAX_LEN 64
 #define FILTER_STAGES 3
 #define NUM_PHASER_STAGES 3
-#define MAX_CHORUS_SAMPLES 64
-#define MAX_DELAY_SAMPLES 64
-#define MAX_REVERB_SAMPLES 64
+#define MAX_CHORUS_SAMPLES 8000
+#define MAX_DELAY_SAMPLES 2000
+#define MAX_REVERB_SAMPLES 2000
 #define NUM_COMBS 4
 #define NUM_ALLPASS 4  // Added missing definition
 
@@ -168,9 +168,10 @@ typedef struct {
 	int index;
 	LFO * lfo;
 	CHORUS_STATE * chorus_state;
+	CHORUS_STATE * chorus_state_L;
 	DELAY_STATE * delay_state;
 	FLANGER_STATE * flanger_state;
-	REVERB_STATE * reverb_state;
+	MASTER_REVERB * reverb_state;
 	PHASER_STATE * phaser_state;
 } FX;
 
