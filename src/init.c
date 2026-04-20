@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "types.h"
+#include "includes/types.h"
 
 // Initialize a filter with default values
 FILTER * init_filter(FILTER * filter, int index, FILTER_TYPES type) {

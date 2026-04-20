@@ -6,10 +6,10 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "types.h"
-#include "gen.h"
-#include "filter.h"
-#include "init.h"
+#include "includes/types.h"
+#include "includes/gen.h"
+#include "includes/filter.h"
+#include "includes/init.h"
 
 #define MAXCOMMSIZE 256
 #define MAX_WAVES 20
@@ -140,13 +140,15 @@ const char * get_filter_name(FILTER_TYPES type) {
 	}
 }
 
-const char * get_filt_adv(FILTER_TYPES type) {
-    switch (type) {
-        case HPF_F:
-            return "A high pass filter passes signal below the cuttoff. You may choose a frequency between 20 and 20,000Hz. My suggestion would be to keep it under 10,000Hz";
-        default:
-            return "idk dude";
-    }
+const char * get_fx_name(FX_TYPES type) {
+	switch(type) {
+		case CHORUS:   return "chorus";
+		case FLANGER:    return "flanger";
+		case DELAY:   return "delay";
+		case REVERB: return "reverb";
+		case PHASER: return "phaser";
+		default:          return "unknown";
+	}
 }
 
 double get_base_frequency(const char * note_str) {
@@ -519,7 +521,31 @@ int main(int argc, char ** argv) {
     		} else {
         		printf("Usage: ls [wave|filter global|filter wave|fx] %s\n", typ);
     		}
-    	// change wave
+		} else if (strcmp(inp, "cfx") == 0) {
+    		int fxn;
+    		for (int i = 0; i < sound->num_fx; i++) {
+        		printf("Index: %d, Type: %s\n", i, get_fx_name(sound->fxs[sound->curr_fx]->type));
+    		}
+    		printf("Choose which fx to switch to> ");
+    		scanf("%d", &fxn);
+    		if (fxn <= sound->num_fx) {
+        		sound->curr_fx = fxn;
+        		printf("Current Fx:\nIndex: %d, Type: %s\n", sound->curr_fx, get_fx_name(sound->fxs[sound->curr_fx]->type));
+    		}
+		} else if (strcmp(inp, "nfx") == 0) {
+    		if (sound->curr_fx + 1 > sound->num_fx-1) {
+        		sound->curr_fx = 0;
+    		} else {
+        		sound->curr_fx += 1;
+    		}
+    		printf("Current Fx:\nIndex: %d, Type: %s\n", sound->curr_fx, get_fx_name(sound->fxs[sound->curr_fx]->type));
+		} else if (strcmp(inp, "pfx") == 0) {
+    		if (sound->curr_fx - 1 < 0) {
+        		sound->curr_fx = 0;
+    		} else {
+        		sound->curr_fx -= 1;
+    		}
+    		printf("Current Fx:\nIndex: %d, Type: %s\n", sound->curr_fx, get_fx_name(sound->fxs[sound->curr_fx]->type));
 		} else if (strcmp(inp, "cw") == 0) {
     		int wn;
     		for (int i = 0; i < sound->num_waves; i++) {

@@ -6,16 +6,14 @@
 - [ ] Add the following effects:
 	- [ ] Tremolo
 	- [x] Delay
-	- [ ] Reverb
+	- [x] Reverb
 	- [ ] Distortion
-	- [ ] Flanger
-	- [ ] Phaser
-	- [ ] Envelope Generator
+	- [x] Flanger
+	- [x] Phaser
+	- [x] Envelope Generator
 	- [ ] Ring Modulation
 	- [ ] Compressor
-	- [ ] High-Shelf filter
-	- [ ] Low-Shelf filter
-	- [ ] Tilt filter
+- [ ] Find use for FFT and Convolution functions
 - [x] Add a way to add multiple filters to waves
 - [ ] Add a way to save the sounds to a lossless format
 - [x] Make an ugly GUI

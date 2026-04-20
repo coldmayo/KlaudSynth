@@ -6,9 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "types.h"
-#include "filter.h"
-#include "effects.h"
+#include "includes/types.h"
+#include "includes/filter.h"
+#include "includes/effects.h"
 
 // Renamed to avoid math.h collision
 double osc_sine(double phase) {

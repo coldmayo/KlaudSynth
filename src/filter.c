@@ -1,7 +1,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
-#include "types.h"
+#include "includes/types.h"
 
 // Simple One-Pole Low Pass Filter
 double LPF(double alpha, double curr_sample, double * prev_output) {
